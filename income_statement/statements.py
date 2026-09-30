@@ -37,6 +37,7 @@ LAYOUT = (
 
 
 def build_income_statement(ledger: Ledger, start: date, end: date) -> dict:
+    """Net posted lines in the range by account, then fill LAYOUT in order."""
     net = net_by_account(lines_in_range(ledger, start, end))
     values: dict[str, Decimal] = {}  # section totals and subtotals, by name
     items = []
@@ -64,6 +65,7 @@ def build_income_statement(ledger: Ledger, start: date, end: date) -> dict:
 
 
 def _build_section(section: Section, ledger: Ledger, net: dict[str, Decimal]) -> dict:
+    """One signed row per account in the section's subtypes, plus a total."""
     accounts = sorted(
         (a for a in ledger.accounts.values() if a.subtype in section.subtypes),
         key=lambda a: a.number,
@@ -81,6 +83,7 @@ def _build_section(section: Section, ledger: Ledger, net: dict[str, Decimal]) ->
 
 
 def _apply_sign(sign: int, value: Decimal) -> Decimal:
+    """Return value as-is for +1, negated for -1."""
     # Negate instead of multiplying by -1: -1 * Decimal("0") is Decimal("-0"),
     # which would print as "-0.00"; -Decimal("0") stays "0".
     return value if sign == 1 else -value

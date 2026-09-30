@@ -20,6 +20,7 @@ define("port", default=8888, help="port to listen on", type=int)
 
 
 def make_app(ledger: Ledger) -> tornado.web.Application:
+    """Wire the API route and the static frontend to an already-loaded ledger."""
     return tornado.web.Application(
         [
             (r"/income-statement", IncomeStatementHandler, {"ledger": ledger}),
@@ -31,6 +32,7 @@ def make_app(ledger: Ledger) -> tornado.web.Application:
 
 
 async def main():
+    """Entry point: read --port, load ledger.json once, and serve forever."""
     parse_command_line()
     ledger = load_ledger(LEDGER_PATH)
     make_app(ledger).listen(options.port)

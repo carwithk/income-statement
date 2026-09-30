@@ -50,11 +50,13 @@ class Ledger:
 
 
 def load_ledger(path) -> Ledger:
+    """Read ledger.json from disk and return a validated Ledger."""
     with open(path) as f:
         return parse_ledger(json.load(f))
 
 
 def parse_ledger(raw: dict) -> Ledger:
+    """Build a validated Ledger from parsed JSON: accounts first, then entries."""
     accounts = {a["number"]: _parse_account(a) for a in raw["accounts"]}
     entries = tuple(_parse_entry(e, accounts) for e in raw["journal_entries"])
     return Ledger(
@@ -66,6 +68,7 @@ def parse_ledger(raw: dict) -> Ledger:
 
 
 def _parse_account(raw: dict) -> Account:
+    """Copy one chart-of-accounts row into an Account."""
     return Account(
         number=raw["number"],
         name=raw["name"],
@@ -76,6 +79,7 @@ def _parse_account(raw: dict) -> Account:
 
 
 def _parse_entry(raw: dict, accounts: dict[str, Account]) -> JournalEntry:
+    """Validate one journal entry's status, lines, and balance, then build it."""
     entry_id = raw["id"]
     if raw["status"] not in STATUSES:
         raise ValueError(f"{entry_id}: unknown status {raw['status']!r}")
@@ -99,6 +103,7 @@ def _parse_entry(raw: dict, accounts: dict[str, Account]) -> JournalEntry:
 
 
 def _parse_line(raw: dict, entry_id: str, accounts: dict[str, Account]) -> Line:
+    """Validate one journal line's account and amounts, then build it."""
     if raw["account"] not in accounts:
         raise ValueError(f"{entry_id}: unknown account {raw['account']!r}")
 
@@ -113,6 +118,7 @@ def _parse_line(raw: dict, entry_id: str, accounts: dict[str, Account]) -> Line:
 
 
 def _parse_amount(value, where: str) -> Decimal:
+    """Turn an amount string into a non-negative Decimal, or raise ValueError."""
     if not isinstance(value, str):
         raise ValueError(f"{where}: amount must be a string, got {value!r}")
     if not AMOUNT_FORMAT.fullmatch(value):

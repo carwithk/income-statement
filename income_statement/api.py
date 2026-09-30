@@ -17,9 +17,11 @@ CENTS = Decimal("0.01")
 
 class IncomeStatementHandler(tornado.web.RequestHandler):
     def initialize(self, ledger: Ledger):
+        """Receive the ledger that app.py loaded at startup."""
         self.ledger = ledger
 
     def get(self):
+        """Validate start/end, build the statement, and write it as JSON (or a 400)."""
         try:
             start = parse_date(self.get_query_argument("start", None), "start")
             end = parse_date(self.get_query_argument("end", None), "end")
@@ -35,6 +37,7 @@ class IncomeStatementHandler(tornado.web.RequestHandler):
 
 
 def parse_date(value: str | None, name: str) -> date:
+    """Turn a YYYY-MM-DD query value into a date, or raise a clear ValueError."""
     if not value:
         raise ValueError(f"{name} is required, as YYYY-MM-DD")
     if not DATE_FORMAT.fullmatch(value):
