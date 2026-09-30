@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Income statement</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem; color: #222; }
+  form { margin-bottom: 1.5rem; }
+  label { margin-right: 1rem; }
+  table { border-collapse: collapse; min-width: 32rem; }
+  td { padding: 0.25rem 0.75rem; }
+  .amount { text-align: right; font-variant-numeric: tabular-nums; }
+  .section-name td { font-weight: bold; padding-top: 1rem; }
+  .account td:first-child { padding-left: 1.5rem; color: #666; }
+  .section-total td { border-top: 1px solid #999; }
+  .subtotal td { font-weight: bold; border-top: 1px solid #333; }
+  .net-income td { font-size: 1.15rem; border-top: 1px solid #333; border-bottom: 3px double #333; }
+  .error { color: #b00020; }
+</style>
+</head>
+<body>
+
+<form id="range">
+  <label>Start <input type="date" id="start" value="2026-01-01" required></label>
+  <label>End <input type="date" id="end" value="2026-03-31" required></label>
+  <button type="submit">Show statement</button>
+</form>
+
+<p id="error" class="error" hidden></p>
+<div id="statement"></div>
+
+<script>
+// All numbers come from the API as strings. This page only formats them
+// for display; it never adds, subtracts, or parses amounts as numbers.
+
+const form = document.getElementById("range");
+const errorBox = document.getElementById("error");
+const output = document.getElementById("statement");
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  loadStatement();
+});
+
+async function loadStatement() {
+  errorBox.hidden = true;
+  output.replaceChildren();
+
+  const params = new URLSearchParams({
+    start: document.getElementById("start").value,
+    end: document.getElementById("end").value,
+  });
+
+  let response, body;
+  try {
+    response = await fetch(`/income-statement?${params}`);
+    body = await response.json();
+  } catch (e) {
+    showError(`Could not load the statement: ${e.message}`);
+    return;
+  }
+
+  if (!response.ok) {
+    showError(body.error || `Request failed with status ${response.status}`);
+    return;
+  }
+  renderStatement(body);
+}
+
+function showError(message) {
+  errorBox.textContent = message;
+  errorBox.hidden = false;
+}
+
+function renderStatement(statement) {
+  const heading = document.createElement("h1");
+  heading.textContent = `${statement.company}: Income statement`;
+
+  const period = document.createElement("p");
+  period.textContent =
+    `${statement.start} to ${statement.end} (amounts in ${statement.currency})`;
+
+  const table = document.createElement("table");
+  for (const item of statement.items) {
+    if (item.kind === "section") {
+      addRow(table, "section-name", [item.name, ""]);
+      for (const line of item.lines) {
+        addRow(table, "account", [`${line.account}  ${line.name}`, line.amount]);
+      }
+      addRow(table, "section-total", [`Total ${item.name.toLowerCase()}`, item.total]);
+    } else {
+      const rowClass = item.name === "Net income" ? "subtotal net-income" : "subtotal";
+      addRow(table, rowClass, [item.name, item.amount]);
+    }
+  }
+
+  output.replaceChildren(heading, period, table);
+}
+
+function addRow(table, className, [label, amount]) {
+  const row = table.insertRow();
+  row.className = className;
+  row.insertCell().textContent = label;
+  const cell = row.insertCell();
+  cell.className = "amount";
+  cell.textContent = amount === "" ? "" : formatAmount(amount);
+}
+
+// "-44480.14" -> "(44,480.14)", "9000.00" -> "9,000.00". String edits only.
+function formatAmount(amount) {
+  const negative = amount.startsWith("-");
+  const [whole, cents] = (negative ? amount.slice(1) : amount).split(".");
+  const grouped = whole.replace(/\B(?=(\d{3})+$)/g, ",");
+  const text = `${grouped}.${cents}`;
+  return negative ? `(${text})` : text;
+}
+
+loadStatement();
+</script>
+</body>
+</html>
